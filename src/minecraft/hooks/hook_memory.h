@@ -68,4 +68,26 @@ namespace minecraft::hook_memory {
         return reinterpret_cast<Fn>(funcAddress)(instance, args...);
     }
 
+    inline std::uintptr_t resolve_call(std::uintptr_t addr) {
+        if (!addr) return 0;
+        __try {
+            const auto disp = *reinterpret_cast<std::int32_t*>(addr + 1);
+            return addr + 5 + static_cast<std::uintptr_t>(disp);
+        }
+        __except (EXCEPTION_EXECUTE_HANDLER) {
+            return 0;
+        }
+    }
+
+    inline std::uintptr_t resolve_rip_relative(std::uintptr_t addr, std::size_t dispOffset, std::size_t instrLen) {
+        if (!addr) return 0;
+        __try {
+            const auto disp = *reinterpret_cast<std::int32_t*>(addr + dispOffset);
+            return addr + instrLen + static_cast<std::uintptr_t>(disp);
+        }
+        __except (EXCEPTION_EXECUTE_HANDLER) {
+            return 0;
+        }
+    }
+
 }

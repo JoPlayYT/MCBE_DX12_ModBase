@@ -2,6 +2,7 @@
 #include "minecraft/hooks/client_instance_hook.h"
 #include "minecraft/hooks/actor_tick_hook.h"
 #include "minecraft/hooks/attack_hook.h"
+#include "minecraft/hooks/level_render_hook.h"
 #include "minecraft/hooks/hook_memory.h"
 #include "minecraft/bedrock_memory.h"
 #include "minecraft/sdk/client/client_instance.h"
@@ -52,18 +53,26 @@ namespace minecraft::hooks {
             "Actor::normalTick",
             BedrockSignatures::actor_normalTick);
 
-        if (!updateAddr || !s_getLocalPlayerAddr || !actorTickAddr) {
+        const std::uintptr_t levelRenderCallAddr = hook_memory::resolve_signature(
+            "LevelRenderer::renderLevel",
+            BedrockSignatures::render_levelRender);
+
+        if (!updateAddr || !s_getLocalPlayerAddr || !actorTickAddr || !levelRenderCallAddr) {
             LOG_FATAL("One or more required signatures failed to resolve!");
             return false;
         }
 
-        // Pass the scanned signature address once
         set_actor_tick_address(actorTickAddr);
 
         EventBus::instance().subscribe<ClientInstanceUpdateEvent>(on_client_update);
 
         if (!install_client_instance_hook(updateAddr)) {
             LOG_ERROR("Failed to install ClientInstance::update hook!");
+            return false;
+        }
+
+        if (!install_level_render_hook(levelRenderCallAddr)) {
+            LOG_ERROR("Failed to install LevelRenderer::renderLevel hook!");
             return false;
         }
 
@@ -74,6 +83,7 @@ namespace minecraft::hooks {
     void shutdown() {
         LOG_INFO("Shutting down game hooks...");
         ClientInstance::setLocalPlayer(nullptr);
+        remove_level_render_hook();
         remove_attack_hook();
         remove_actor_tick_hook();
         remove_client_instance_hook();

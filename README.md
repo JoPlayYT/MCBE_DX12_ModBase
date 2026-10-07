@@ -1,9 +1,9 @@
 # MCBE DX12 Internal Client Template
 
-A modular C++20 template for building internal DirectX 12 clients for Minecraft Bedrock Edition. Built on a clean event-driven architecture featuring an EnTT-based SDK, dynamic vtable hooking, ImGui DirectX 12 overlay rendering, Win32 input routing, and a JSON profile configuration system.
+A modular C++20 template for building internal DirectX 12 clients for Minecraft Bedrock Edition. Built on a clean event-driven architecture featuring an EnTT-based SDK, dynamic vtable hooking, dual-pipeline rendering (Native Tessellator 3D + DirectX 12 ImGui overlay), Win32 input routing, and a JSON profile configuration system.
 
 > [!NOTE]
-> **Game Version & Compatibility**: Current signatures, vtable slots, and struct offsets are updated for Minecraft Bedrock **v26.40**.
+> **Game Version & Compatibility**: Current signatures, vtable slots, and struct offsets are updated for Minecraft Bedrock **v26.52**.
 > 
 > **Template Base**: This repository is designed as a foundational template/base. It may or may not receive continuous SDK expansions or updates for future game versions. You are completely free to expand, modify the code, integrate it into your own client, or fully rebrand it under the terms of the MIT License.
 
@@ -11,11 +11,13 @@ A modular C++20 template for building internal DirectX 12 clients for Minecraft 
 
 ## Features
 
-- **DirectX 12 Overlay**: Native D3D12 render hook powered by Kiero with fence synchronization, buffer resize handling, and ImGui integration.
+- **Dual Rendering Architecture**:
+  - **In-World 3D (Native Tessellator)**: Render directly into Minecraft's 3D render pipeline via `LevelRenderer::renderLevel` with zero jitter, zero thread race conditions, and automatic depth testing.
+  - **Screen 2D (DirectX 12 + ImGui)**: Native D3D12 render hook powered by Kiero with fence synchronization, buffer resize handling, and ImGui integration.
 - **Event-Driven Pipeline**: Type-safe, decoupled `EventBus` supporting publish/subscribe patterns and event cancellation.
 - **EnTT Component SDK**: Direct access to Minecraft Bedrock ECS (`EntityContext`, entity registries, and standard game components).
 - **Dynamic VTable & Signature Hooks**: Memory scanning via `libhat` with compile-time member function vtable target extraction and MinHook detours.
-- **Modular Feature Architecture**: Category-based module system supporting toggle/hold keybinds, runtime lifecycle callbacks, and typed serialized settings.
+- **Modular Feature Architecture**: Category-based module system supporting toggle/hold keybinds, runtime lifecycle callbacks (`on_level_render()`, `on_imgui_render()`), and typed serialized settings.
 - **JSON Profile Manager**: Automatic profile serialization and deserialization for module states and configuration values.
 - **Modern C++20 Core**: Structured logging with `std::source_location` and `std::format`, RAII memory management, and clean CMake build configuration.
 
@@ -33,7 +35,7 @@ MCBE_DX12_ModBase/
 │   │
 │   ├── config/                 # Configuration & profile persistence
 │   │   ├── config_manager.h    # JSON profile save/load/delete manager
-│   │   └── setting.h           # Typed settings (Float, Int, Bool, Enum)
+│   │   └── setting.h           # Typed settings (Float, Int, Bool, Enum, Color)
 │   │
 │   ├── events/                 # EventBus & runtime event payloads
 │   │   ├── event.h             # Base cancellable Event class
@@ -41,6 +43,7 @@ MCBE_DX12_ModBase/
 │   │   ├── actor_tick_event.h  # Dispatched on player/actor tick
 │   │   ├── attack_event.h      # Dispatched on GameMode::attack
 │   │   ├── client_instance_update_event.h
+│   │   ├── level_render_event.h # Dispatched on LevelRenderer::renderLevel
 │   │   └── key_event.h         # Dispatched on Win32 key presses
 │   │
 │   ├── input/                  # Win32 input processing & keybind tracking
@@ -54,20 +57,22 @@ MCBE_DX12_ModBase/
 │   │   │   ├── hook_memory.h   # libhat pattern scanner & vtable helpers
 │   │   │   ├── actor_tick_hook.h
 │   │   │   ├── attack_hook.h
-│   │   │   └── client_instance_hook.h
+│   │   │   ├── client_instance_hook.h
+│   │   │   └── level_render_hook.h  # LevelRenderer::renderLevel hook (publishes LevelRenderEvent)
 │   │   └── sdk/                # Reverse-engineered game classes & EnTT ECS
 │   │       ├── actor/          # Actor, LocalPlayer, GameMode
 │   │       ├── client/         # ClientInstance, LevelRenderer, GuiData, GLMatrix
 │   │       ├── components/     # StateVector, Rotation, AABB, etc.
-│   │       └── entity/         # EntityContext, EntityId, EnTT integration
+│   │       ├── entity/         # EntityContext, EntityId, EnTT integration
+│   │       └── render/         # ScreenContext, Tessellator, MaterialPtr, MeshHelpers, Draw3D
 │   │
 │   ├── modules/                # Base module system and feature modules
-│   │   ├── module.h / .cpp     # Module base class
+│   │   ├── module.h / .cpp     # Module base class (on_imgui_render, on_level_render)
 │   │   ├── module_manager.h    # Module registry and category manager
 │   │   ├── combat/             # Combat modules (e.g. Killaura)
 │   │   ├── movement/           # Movement modules (e.g. Jetpack, Fly)
 │   │   ├── player/             # Player utility modules
-│   │   └── visual/             # Render & HUD modules (e.g. Arraylist, ESP)
+│   │   └── visual/             # Render & HUD modules (Arraylist, ESP, Trail)
 │   │
 │   ├── platform/windows/       # DLL entry point (DllMain) and uninject thread
 │   │
@@ -81,7 +86,8 @@ MCBE_DX12_ModBase/
 │   │
 │   └── utils/                  # Utilities, logging, and math
 │       ├── logger.h / .cpp     # Thread-safe format logger
-│       └── math.h              # Vec2, Vec3, ViewAngles, AABB math types
+│       ├── math.h              # Vec2, Vec3, ViewAngles, AABB math types
+│       └── memory_utils.h      # Memory inspection utilities
 │
 └── external/
     ├── d3d12/                  # DirectX 12 helper headers
@@ -181,7 +187,50 @@ CMake will automatically pick up any new `.cpp` and `.h` files under `src/`.
 
 ---
 
-### 2. Working with the EventBus
+### 2. Dual Rendering Pipelines: In-World 3D vs 2D Overlay
+
+The base provides two distinct rendering passes depending on what you want to draw:
+
+#### Option A: In-World 3D (Tessellator via `on_level_render`)
+Runs directly inside the engine's `LevelRenderer::renderLevel` pass. It is 100% thread-safe to iterate `Actor::get_all()` directly with zero entity caches, zero jitter, and no manual projection.
+
+```cpp
+#include "minecraft/sdk/render/draw_3d.h"
+
+void ESP::on_level_render() {
+    Draw3D dc;
+    if (!dc.is_valid()) return;
+
+    // Draw 3D bounding boxes directly in world space
+    dc.draw_box(min, max, mce::Color{ 1.0f, 0.2f, 0.2f, 1.0f });
+    dc.fill_box(min, max, mce::Color{ 1.0f, 0.2f, 0.2f, 0.2f });
+    dc.flush();
+}
+```
+
+#### Option B: 2D Screen Overlay (DirectX 12 + ImGui via `on_imgui_render`)
+Runs on the DirectX 12 present hook. Ideal for HUD elements, 2D trails, ClickGUI, and overlays:
+
+```cpp
+#include <imgui.h>
+#include "minecraft/sdk/client/client_instance.h"
+
+void Trail::on_imgui_render() {
+    auto* ci = ClientInstance::get();
+    if (!ci) return;
+
+    ImDrawList* drawList = ImGui::GetBackgroundDrawList();
+
+    math::Vec2 screenA, screenB;
+    if (ci->world_to_screen(worldPosA, screenA) && ci->world_to_screen(worldPosB, screenB)) {
+        drawList->AddLine(ImVec2(screenA.x, screenA.y), ImVec2(screenB.x, screenB.y), IM_COL32(255, 255, 255, 255), 2.0f);
+    }
+}
+```
+
+---
+
+### 3. Working with the EventBus
 
 #### Subscribing to Events
 ```cpp
@@ -206,7 +255,7 @@ EventBus::instance().unsubscribe(id);
 
 ---
 
-### 3. Accessing Minecraft EnTT Components
+### 4. Accessing Minecraft EnTT Components
 
 All actors wrap an `EntityContext` providing direct access to Bedrock's EnTT registry:
 
@@ -218,7 +267,7 @@ if (actor->hasComponent<StateVectorComponent>()) {
     math::Vec3 velocity = state->mPosDelta;
 }
 
-// Iterate over all active world actors safely on ActorTickEvent
+// In on_level_render() or on_enable() (tick thread), iterate active world actors:
 for (Actor* actor : Actor::get_all(localPlayer)) {
     if (actor->isPlayer()) {
         // Process player entity
@@ -228,30 +277,13 @@ for (Actor* actor : Actor::get_all(localPlayer)) {
 
 ---
 
-### 4. Hooking Functions & Memory Signatures
+### 5. Hooking Functions & Memory Signatures
 
 #### Signature Scanning
 Define patterns in `src/minecraft/bedrock_memory.h` and scan with `libhat`:
 
 ```cpp
-const std::uintptr_t addr = hook_memory::resolve_signature("FunctionName", "48 89 5C 24 ? 57 48 83 EC");
-```
-
----
-
-### 5. Screen Projection (WorldToScreen)
-
-Visual modules rendering in `on_imgui_render()` can project 3D coordinates to 2D screen positions via `ClientInstance`:
-
-```cpp
-#include "minecraft/sdk/client/client_instance.h"
-
-math::Vec2 screen;
-if (ClientInstance::get()->world_to_screen(worldPos, screen)) {
-    // Render 2D overlays at (screen.x, screen.y)
-    ImGui::GetBackgroundDrawList()->AddCircleFilled(
-        ImVec2(screen.x, screen.y), 3.0f, IM_COL32(255, 255, 255, 255));
-}
+const std::uintptr_t addr = hook_memory::resolve_signature("FunctionName", BedrockSignatures::render_levelRender);
 ```
 
 ---

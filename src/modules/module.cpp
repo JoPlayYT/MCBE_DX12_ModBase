@@ -23,11 +23,11 @@ void Module::set_enabled(bool enabled) {
     }
 
     if (enabled) {
-        LOG_INFO("Module §e{}§r -> §aENABLED§r", m_name);
+        LOG_INFO("Module ï¿½e{}ï¿½r -> ï¿½aENABLEDï¿½r", m_name);
         on_enable();
     }
     else {
-        LOG_INFO("Module §e{}§r -> §cDISABLED§r", m_name);
+        LOG_INFO("Module ï¿½e{}ï¿½r -> ï¿½cDISABLEDï¿½r", m_name);
         on_disable();
     }
 }

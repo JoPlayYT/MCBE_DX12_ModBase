@@ -5,8 +5,7 @@
 using namespace minecraft;
 
 void MeshHelpers::renderMeshImmediately(ScreenContext* ctx, Tessellator* tess, MaterialPtr* material) {
-    static std::uintptr_t func = hook_memory::resolve_signature(
-        "MeshHelpers::renderMeshImmediately", BedrockSignatures::render_meshImmediate);
+    static std::uintptr_t func = hook_memory::resolve_signature(BedrockSignatures::render_meshImmediate);
     if (!func || !ctx || !tess || !material) return;
 
     char pad[0x58]{};

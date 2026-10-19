@@ -1,7 +1,6 @@
 #pragma once
 
 #include "utils/math.h"
-#include "utils/memory_utils.h"
 #include <cstdint>
 #include <vector>
 
@@ -17,6 +16,7 @@
 #include <minecraft/sdk/components/ActorTypeComponent.h>
 #include <minecraft/sdk/components/ActorOwnerComponent.h>
 #include <minecraft/sdk/components/ActorUniqueIDComponent.h>
+#include <minecraft/sdk/components/FlagComponents.h>
 
 class Actor {
 public:
@@ -142,36 +142,52 @@ public:
 
     math::Vec3 getPosition() const {
         if (auto* stateVector = getComponent<StateVectorComponent>()) {
-            return stateVector->mPos;
+            if (stateVector->mPos.x != 0.0f || stateVector->mPos.y != 0.0f || stateVector->mPos.z != 0.0f) {
+                return stateVector->mPos;
+            }
+        }
+        if (auto* aabb = getAABB()) {
+            if (aabb->mMin.x != 0.0f || aabb->mMin.y != 0.0f || aabb->mMin.z != 0.0f) {
+                return {
+                    (aabb->mMin.x + aabb->mMax.x) * 0.5f,
+                    aabb->mMin.y,
+                    (aabb->mMin.z + aabb->mMax.z) * 0.5f
+                };
+            }
         }
         return { 0.0f, 0.0f, 0.0f };
     }
 
     math::Vec3 getRenderPosition() const {
         if (auto* renderPos = getComponent<RenderPositionComponent>()) {
-            return renderPos->mPosition;
+            if (renderPos->mPosition.x != 0.0f || renderPos->mPosition.y != 0.0f || renderPos->mPosition.z != 0.0f) {
+                return renderPos->mPosition;
+            }
         }
-        return { 0.0f, 0.0f, 0.0f };
+        return getPosition();
+    }
+
+    [[nodiscard]] bool isAlive() const {
+        return !hasComponent<IsDeadFlagComponent>();
     }
 
     [[nodiscard]] bool isPlayer() const {
         return getActorType() == ActorType::Player;
     }
 
-
     [[nodiscard]] static std::vector<Actor*> get_all(Actor* referenceActor) {
         std::vector<Actor*> actors;
-        if (!utils::memory::is_valid_ptr(referenceActor)) return actors;
+        if (!referenceActor) return actors;
 
         EntityContext* context = referenceActor->getEntityContext();
-        if (!utils::memory::is_valid_ptr(context) || !utils::memory::is_valid_ptr(context->mRegistry)) return actors;
+        if (!context || !context->mRegistry) return actors;
 
         auto& registry = context->getRegistry();
         auto view = registry.view<ActorOwnerComponent>();
 
         for (auto entity : view) {
             auto* owner = registry.try_get<ActorOwnerComponent>(entity);
-            if (owner && utils::memory::is_valid_ptr(owner->mActor)) {
+            if (owner && owner->mActor) {
                 actors.push_back(owner->mActor);
             }
         }

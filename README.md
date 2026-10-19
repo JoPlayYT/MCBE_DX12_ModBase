@@ -85,9 +85,10 @@ MCBE_DX12_ModBase/
 │   │   └── widgets/            # Custom switches, sliders, search bar, badges
 │   │
 │   └── utils/                  # Utilities, logging, and math
+│       ├── color.h             # Color definitions and conversion utilities
+│       ├── hash.h              # Compile-time 64-bit FNV-1a string hashing
 │       ├── logger.h / .cpp     # Thread-safe format logger
-│       ├── math.h              # Vec2, Vec3, ViewAngles, AABB math types
-│       └── memory_utils.h      # Memory inspection utilities
+│       └── math.h              # Vec2, Vec3, ViewAngles, AABB math types
 │
 └── external/
     ├── d3d12/                  # DirectX 12 helper headers
@@ -277,13 +278,47 @@ for (Actor* actor : Actor::get_all(localPlayer)) {
 
 ---
 
-### 5. Hooking Functions & Memory Signatures
+### 5. Hooking Functions & Memory Definitions
 
-#### Signature Scanning
-Define patterns in `src/minecraft/bedrock_memory.h` and scan with `libhat`:
+#### Defining Signatures
+Signatures are declared inside `minecraft::BedrockSignatures` in `src/minecraft/bedrock_memory.h` using the `DEFINE_SIG` macro:
 
 ```cpp
-const std::uintptr_t addr = hook_memory::resolve_signature("FunctionName", BedrockSignatures::render_levelRender);
+DEFINE_SIG(clientInstance_Update, "ClientInstance::update",
+    "55 41 57 41 56 41 55 41 54 56 57 53 48 81 EC ? ? ? ? 48 8D AC 24 ? ? ? ? "
+    "48 C7 85 ? ? ? ? FE FF FF FF 89 D3 48 89 CE 48 8B 01 48 8B 80 ? ? ? ? "
+    "48 8D 95 ? ? ? ? FF 15 ? ? ? ?");
+```
+
+- **`name`**: Member identifier (e.g. `BedrockSignatures::clientInstance_Update`).
+- **`readableName`**: Human-readable name automatically logged during signature resolution (`[OK]` / `[FAILED]`).
+- **`patternStr`**: IDA-style byte string pattern with `?` wildcards.
+- **`hash`**: Automatically computes a 64-bit FNV-1a hash at compile time via `utils::hash::fnv1a_64`.
+
+#### Resolving Signatures
+Scan with `libhat` using the type-safe single-argument signature resolver:
+
+```cpp
+const std::uintptr_t addr = hook_memory::resolve_signature(BedrockSignatures::render_levelRender);
+```
+
+#### Defining Struct Offsets
+Offsets are declared inside `minecraft::BedrockOffsets` using `DEFINE_OFFSET(OwnerClass, FieldType, name, offsetVal)`:
+
+```cpp
+DEFINE_OFFSET(ClientInstance, GuiData*, clientInstance_guiData, 0x650);
+```
+
+Access fields type-safely via `.get(instance)` or `operator()`:
+```cpp
+GuiData* guiData = BedrockOffsets::clientInstance_guiData.get(clientInstance);
+```
+
+#### Defining VTable Slots
+VTable indices are declared in `minecraft::BedrockVtableSlots` using `DEFINE_VTABLE_SLOT(name, slotIndex)`:
+
+```cpp
+DEFINE_VTABLE_SLOT(gameMode_Attack, 15);
 ```
 
 ---

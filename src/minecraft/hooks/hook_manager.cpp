@@ -45,41 +45,15 @@ namespace minecraft::hooks {
 
         LOG_INFO("Resolving game signatures...");
 
-        const std::uintptr_t updateAddr = hook_memory::resolve_signature(
-            "ClientInstance::update",
-            BedrockSignatures::clientInstance_Update);
-
-        const std::uintptr_t grabMouseAddr = hook_memory::resolve_signature(
-            "ClientInstance::grabMouse",
-            BedrockSignatures::clientInstance_grabMouse);
-
-        const std::uintptr_t releaseMouseAddr = hook_memory::resolve_signature(
-            "ClientInstance::releaseMouse",
-            BedrockSignatures::clientInstance_releaseMouse);
-
-        const std::uintptr_t screenNameAddr = hook_memory::resolve_signature(
-            "ClientInstance::getScreenName",
-            BedrockSignatures::clientInstance_getScreenName);
-
-        s_getLocalPlayerAddr = hook_memory::resolve_signature(
-            "ClientInstance::getLocalPlayer",
-            BedrockSignatures::clientInstance_getLocalPlayer);
-
-        const std::uintptr_t actorTickAddr = hook_memory::resolve_signature(
-            "Actor::normalTick",
-            BedrockSignatures::actor_normalTick);
-
-        const std::uintptr_t actorSetRotAddr = hook_memory::resolve_signature(
-            "Actor::setRotation",
-            BedrockSignatures::actor_setRotation);
-
-        const std::uintptr_t perspectiveAddr = hook_memory::resolve_signature(
-            "Options::getPerspective",
-            BedrockSignatures::options_getPerspective);
-
-        const std::uintptr_t levelRenderCallAddr = hook_memory::resolve_signature(
-            "LevelRenderer::renderLevel",
-            BedrockSignatures::render_levelRender);
+        const std::uintptr_t updateAddr = hook_memory::resolve_signature(BedrockSignatures::clientInstance_Update);
+        const std::uintptr_t grabMouseAddr = hook_memory::resolve_signature(BedrockSignatures::clientInstance_grabMouse);
+        const std::uintptr_t releaseMouseAddr = hook_memory::resolve_signature(BedrockSignatures::clientInstance_releaseMouse);
+        const std::uintptr_t screenNameAddr = hook_memory::resolve_signature(BedrockSignatures::clientInstance_getScreenName);
+        s_getLocalPlayerAddr = hook_memory::resolve_signature(BedrockSignatures::clientInstance_getLocalPlayer);
+        const std::uintptr_t actorTickAddr = hook_memory::resolve_signature(BedrockSignatures::actor_normalTick);
+        const std::uintptr_t actorSetRotAddr = hook_memory::resolve_signature(BedrockSignatures::actor_setRotation);
+        const std::uintptr_t perspectiveAddr = hook_memory::resolve_signature(BedrockSignatures::options_getPerspective);
+        const std::uintptr_t levelRenderCallAddr = hook_memory::resolve_signature(BedrockSignatures::render_levelRender);
 
         if (!updateAddr || !s_getLocalPlayerAddr || !actorTickAddr || !levelRenderCallAddr) {
             LOG_FATAL("One or more required signatures failed to resolve!");

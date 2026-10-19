@@ -5,23 +5,20 @@
 using namespace minecraft;
 
 void Tessellator::vertex(float x, float y, float z) {
-    static std::uintptr_t func = hook_memory::resolve_signature(
-        "Tessellator::vertex", BedrockSignatures::render_tessVertex);
+    static std::uintptr_t func = hook_memory::resolve_signature(BedrockSignatures::render_tessVertex);
     if (!func) return;
     reinterpret_cast<void(*)(Tessellator*, float, float, float)>(func)(this, x, y, z);
 }
 
 void Tessellator::begin(Primitive primitive, int numVertices) {
-    static std::uintptr_t func = hook_memory::resolve_signature(
-        "Tessellator::begin", BedrockSignatures::render_tessBegin);
+    static std::uintptr_t func = hook_memory::resolve_signature(BedrockSignatures::render_tessBegin);
     if (!func) return;
     reinterpret_cast<void(*)(Tessellator*, int, Primitive, int, bool)>(func)(
         this, 0, primitive, numVertices, false);
 }
 
 void Tessellator::color(float r, float g, float b, float a) {
-    static std::uintptr_t func = hook_memory::resolve_signature(
-        "Tessellator::color", BedrockSignatures::render_tessColor);
+    static std::uintptr_t func = hook_memory::resolve_signature(BedrockSignatures::render_tessColor);
     if (!func) return;
     mce::Color col{ r, g, b, a };
     reinterpret_cast<void(*)(Tessellator*, const mce::Color&)>(func)(this, col);

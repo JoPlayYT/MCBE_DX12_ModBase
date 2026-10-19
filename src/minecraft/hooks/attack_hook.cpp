@@ -5,7 +5,6 @@
 #include "minecraft/sdk/actor/local_player.h"
 #include "events/event_bus.h"
 #include "events/attack_event.h"
-#include "utils/memory_utils.h"
 #include "utils/logger.h"
 
 #include <MinHook.h>
@@ -42,12 +41,12 @@ namespace minecraft::hooks {
     void install_attack_hook(LocalPlayer* localPlayer) {
         g_currentLocalPlayer.store(localPlayer, std::memory_order_relaxed);
 
-        if (!utils::memory::is_valid_ptr(localPlayer)) {
+        if (!localPlayer) {
             return;
         }
 
         GameMode* gameMode = localPlayer->getGameMode();
-        if (!utils::memory::is_valid_ptr(gameMode)) {
+        if (!gameMode) {
             return;
         }
 
@@ -58,7 +57,7 @@ namespace minecraft::hooks {
         g_lastHookCheck = now;
 
         const std::uintptr_t funcAddr = hook_memory::vtable_entry(gameMode, BedrockVtableSlots::gameMode_Attack);
-        if (!utils::memory::is_valid_ptr(reinterpret_cast<void*>(funcAddr))) {
+        if (!funcAddr) {
             return;
         }
 

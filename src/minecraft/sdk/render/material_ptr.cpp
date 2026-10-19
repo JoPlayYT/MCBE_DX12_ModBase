@@ -1,7 +1,6 @@
 #include "minecraft/sdk/render/material_ptr.h"
 #include "minecraft/hooks/hook_memory.h"
 #include "minecraft/bedrock_memory.h"
-#include "utils/memory_utils.h"
 
 using namespace minecraft;
 
@@ -11,11 +10,10 @@ MaterialPtr* MaterialPtr::getUIColor() {
 
     if (!attempted) {
         attempted = true;
-        std::uintptr_t sig = hook_memory::resolve_signature(
-            "MaterialPtr::getUIColor", BedrockSignatures::render_uiFillColor);
+        std::uintptr_t sig = hook_memory::resolve_signature(BedrockSignatures::render_uiFillColor);
         if (sig) {
             auto addr = hook_memory::resolve_rip_relative(sig, 7, 11);
-            if (addr && utils::memory::is_valid_ptr(reinterpret_cast<void*>(addr))) {
+            if (addr) {
                 resolved = reinterpret_cast<MaterialPtr*>(addr);
             }
         }

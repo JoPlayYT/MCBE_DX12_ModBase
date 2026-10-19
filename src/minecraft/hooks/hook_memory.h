@@ -34,6 +34,11 @@ namespace minecraft::hook_memory {
         return addr;
     }
 
+    template <typename SigT>
+    inline std::uintptr_t resolve_signature(const SigT& sig) {
+        return resolve_signature(SigT::display_name, SigT::pattern);
+    }
+
     inline std::uintptr_t vtable_entry(void* instance, int index) {
         if (!instance) {
             return 0;

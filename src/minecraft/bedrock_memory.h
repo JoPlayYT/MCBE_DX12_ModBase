@@ -1,56 +1,145 @@
 #pragma once
 
 #include <cstdint>
+#include <string_view>
+#include "utils/hash.h"
+
+// Forward declarations
+class LocalPlayer;
+class ClientInstance;
+class LevelRenderer;
+class GuiData;
+class ScreenContext;
+
+#define DEFINE_SIG(name, readableName, patternStr) \
+    struct name##_sig_t { \
+        static constexpr const char*     symbol       = #name; \
+        static constexpr const char*     display_name = (readableName); \
+        static constexpr std::string_view pattern     {patternStr}; \
+        static constexpr std::uint64_t   hash         = ::utils::hash::fnv1a_64(patternStr); \
+        \
+        [[nodiscard]] constexpr operator const char*() const noexcept { return patternStr; } \
+        [[nodiscard]] constexpr operator std::string_view() const noexcept { return pattern; } \
+        [[nodiscard]] static constexpr const char* get() noexcept { return patternStr; } \
+        [[nodiscard]] static constexpr const char* name() noexcept { return display_name; } \
+        [[nodiscard]] static constexpr std::string_view view() noexcept { return pattern; } \
+    }; \
+    static inline constexpr name##_sig_t name{}
+
+#define DEFINE_OFFSET(OwnerClass, FieldType, name, offsetVal) \
+    struct name##_offset_t { \
+        using owner_type = OwnerClass; \
+        using field_type = FieldType; \
+        static constexpr std::uintptr_t  offset = (offsetVal); \
+        static constexpr const char*     symbol = #name; \
+        \
+        template <typename T> \
+        [[nodiscard]] constexpr FieldType& get(T* inst) const noexcept { \
+            return *reinterpret_cast<FieldType*>(reinterpret_cast<std::uintptr_t>(inst) + offset); \
+        } \
+        template <typename T> \
+        [[nodiscard]] constexpr FieldType& operator()(T* inst) const noexcept { \
+            return get(inst); \
+        } \
+        [[nodiscard]] constexpr operator std::uintptr_t() const noexcept { \
+            return offset; \
+        } \
+    }; \
+    static inline constexpr name##_offset_t name{}
+
+#define DEFINE_VTABLE_SLOT(name, slotIndex) \
+    struct name##_slot_t { \
+        static constexpr int         index  = (slotIndex); \
+        static constexpr const char* symbol = #name; \
+        [[nodiscard]] constexpr operator int() const noexcept { return index; } \
+    }; \
+    static inline constexpr name##_slot_t name{}
 
 namespace minecraft {
 
     struct BedrockVtableSlots {
-        static constexpr int gameMode_Attack = 15; //26.52
+        DEFINE_VTABLE_SLOT(gameMode_Attack, 15);
     };
 
     struct BedrockOffsets {
-        static constexpr std::uintptr_t localPlayer_gameMode = 0xAA0; //26.52
-        static constexpr std::uintptr_t clientInstance_levelRenderer = 0x1C0; //26.52
-        static constexpr std::uintptr_t clientInstance_glMatrix = 0x420; //26.52
-        static constexpr std::uintptr_t clientInstance_guiData = 0x650; //26.52
-        static constexpr std::uintptr_t levelRenderer_renderPlayer = 0x468; //26.52
-        static constexpr std::uintptr_t renderPlayer_cameraPos = 0x660; //26.52
-        static constexpr std::uintptr_t renderPlayer_fovX = 0xF58; //26.52
-        static constexpr std::uintptr_t renderPlayer_fovY = 0xF6C; //26.52
-        static constexpr std::uintptr_t guiData_windowSize = 0x40; //26.52
-        static constexpr std::uintptr_t screenContext_shaderColor = 0x30; //26.52
-        static constexpr std::uintptr_t screenContext_tessellator = 0xB8; //26.52
+        DEFINE_OFFSET(ClientInstance, void*,            clientInstance_levelRenderer, 0x1C0);
+        DEFINE_OFFSET(ClientInstance, float*,           clientInstance_glMatrix,      0x420);
+        DEFINE_OFFSET(ClientInstance, GuiData*,         clientInstance_guiData,       0x650);
+
+        DEFINE_OFFSET(LocalPlayer,    void*,            localPlayer_gameMode,         0xAA0);
+
+        DEFINE_OFFSET(LevelRenderer,  void*,            levelRenderer_renderPlayer,   0x468);
+        DEFINE_OFFSET(void,           float*,           renderPlayer_cameraPos,       0x660);
+        DEFINE_OFFSET(void,           float,            renderPlayer_fovX,            0xF58);
+        DEFINE_OFFSET(void,           float,            renderPlayer_fovY,            0xF6C);
+
+        DEFINE_OFFSET(GuiData,        float*,           guiData_windowSize,           0x040);
+        DEFINE_OFFSET(ScreenContext,  float*,           screenContext_shaderColor,    0x030);
+        DEFINE_OFFSET(ScreenContext,  void*,            screenContext_tessellator,    0x0B8);
     };
 
     struct BedrockSignatures {
-        static constexpr const char* clientInstance_Update = //26.52
-            "55 41 57 41 56 41 55 41 54 56 57 53 48 81 EC ? ? ? ? 48 8D AC 24 ? ? ? ? 48 C7 85 ? ? ? ? FE FF FF FF 89 D3 48 89 CE 48 8B 01 48 8B 80 ? ? ? ? 48 8D 95 ? ? ? ? FF 15 ? ? ? ?";
-        static constexpr const char* clientInstance_grabMouse = //26.52
-            "56 48 83 EC 20 48 89 CE 48 8B 01 48 8B 80 10 05 00 00 FF 15 ? ? ? ? 84 C0 74 ? 48 8B 8E A8 01 00 00 48 8B 01 48 8B 80 38 04 00 00";
-        static constexpr const char* clientInstance_releaseMouse = //26.52
-            "56 48 83 EC 20 48 89 CE 48 8B 01 48 8B 80 10 05 00 00 FF 15 ? ? ? ? 84 C0 74 ? 48 8B 8E A8 01 00 00 48 8B 01 48 8B 80 40 04 00 00";
-        static constexpr const char* clientInstance_getLocalPlayer = //26.52
-            "48 83 EC 48 48 8B 05 ? ? ? ? 48 31 E0 48 89 44 24 40 48 8D 91 ? ? ? ? 48 8D 4C 24 20 E8 ? ? ? ? 80 7C 24 38 01";
-        static constexpr const char* clientInstance_getScreenName = //26.52
-            "55 56 57 48 83 EC ? 48 8D 6C 24 ? 48 C7 45 ? FE FF FF FF 48 89 D6 48 8B 01 48 8B 80 80 07 00 00 48 8D 55 ? FF 15 ? ? ? ? 48 83 7D ? 00 75 ? 48 8D 05 ? ? ? ? 48 89 44 24 ? 48 8D 0D ? ? ? ? 48 8D 15 ? ? ? ? 4C 8D 0D ? ? ? ? 41 B8 2C 01 00 00 E8 ? ? ? ? 84 C0 74 ? C7 04 25 00 00 00 00 DE C0 AD DE 48 8B 45 ? 80 38 00 75 ? 48 8D 05 ? ? ? ? 48 89 44 24 ? 48 8D 0D ? ? ? ? 48 8D 15 ? ? ? ? 4C 8D 0D ? ? ? ? 41 B8 30 01 00 00 E8 ? ? ? ? 84 C0 74 ? C7 04 25 00 00 00 00 DE C0 AD DE 48 8B 4D ? 48 8B 01 48 8B 80 60 01 00 00";
-        static constexpr const char* actor_normalTick = //26.52
-            "55 41 57 41 56 41 55 41 54 56 57 53 48 81 EC ? ? ? ? 48 8D AC 24 ? ? ? ? 0F 29 BD ? ? ? ? 0F 29 B5 ? ? ? ? 48 C7 85 ? ? ? ? FE FF FF FF 48 89 CE 80 B9 ? ? ? ? 01 75 ? 83 BE ? ? ? ? 00";
-        static constexpr const char* actor_setRotation = //26.52
-            "41 57 41 56 41 55 41 54 56 57 55 53 48 81 EC D8 00 00 00 44 0F 29 94 24 C0 00 00 00 44 0F 29 8C 24 B0 00 00 00 44 0F 29 84 24 A0 00 00 00 0F 29 BC 24 90 00 00 00 0F 29 B4 24 80 00 00 00 4C 89 C6 49 8B 40 10 41 8B 78 18";
-        static constexpr const char* options_getPerspective = //26.52
-            "48 83 EC ? 48 8B 05 ? ? ? ? 48 31 E0 48 89 44 24 ? 48 8B 01 48 8B 40 ? 48 8D 54 24 ? 41 B8 03 00 00 00";
-        static constexpr const char* render_levelRender = //26.52
-            "E8 ? ? ? ? 45 31 E4 48 83 BE";
-        static constexpr const char* render_tessVertex = //26.52
-            "55 41 57 41 56 41 55 41 54 56 57 53 48 81 EC ? ? ? ? 48 8D AC 24 ? ? ? ? 44 0F 29 ? ? 44 0F 29 ? ? 0F 29 ? ? 0F 29 ? ? 48 C7 ? ? FE FF FF FF 0F 28 F3 0F 28 FA 44 0F 28 C1 48 89 CE 48 8B 0D ? ? ? ? 48 8B 01";
-        static constexpr const char* render_tessBegin = //26.52
-            "56 57 55 53 48 83 EC ? 48 8B 05 ? ? ? ? 48 31 E0 48 89 44 24 ? 80 B9 ? ? ? ? ? 0F 85 ? ? ? ? 80 B9";
-        static constexpr const char* render_tessColor = //26.52
-            "80 B9 ? ? ? ? ? 0F 85 ? ? ? ? F3 0F 10 05 ? ? ? ? F3 0F 10 0A";
-        static constexpr const char* render_meshImmediate = //26.52
-            "55 41 57 41 56 41 54 56 57 53 48 81 EC ? ? ? ? 48 8D AC 24 ? ? ? ? 48 C7 85 ? ? ? ? ? ? ? ? 80 BA ? ? ? ? ? 0F 85 ? ? ? ? 4C 89 CF";
-        static constexpr const char* render_uiFillColor = //26.52
-            "C6 45 D0 00 4C 8D 05 ? ? ? ? 4C 8D 4D B0 48 89 F1 48 89 FA E8";
+        DEFINE_SIG(clientInstance_Update, "ClientInstance::update",
+            "55 41 57 41 56 41 55 41 54 56 57 53 48 81 EC ? ? ? ? 48 8D AC 24 ? ? ? ? "
+            "48 C7 85 ? ? ? ? FE FF FF FF 89 D3 48 89 CE 48 8B 01 48 8B 80 ? ? ? ? "
+            "48 8D 95 ? ? ? ? FF 15 ? ? ? ?");
+
+        DEFINE_SIG(clientInstance_grabMouse, "ClientInstance::grabMouse",
+            "56 48 83 EC 20 48 89 CE 48 8B 01 48 8B 80 10 05 00 00 FF 15 ? ? ? ? "
+            "84 C0 74 ? 48 8B 8E A8 01 00 00 48 8B 01 48 8B 80 38 04 00 00");
+
+        DEFINE_SIG(clientInstance_releaseMouse, "ClientInstance::releaseMouse",
+            "56 48 83 EC 20 48 89 CE 48 8B 01 48 8B 80 10 05 00 00 FF 15 ? ? ? ? "
+            "84 C0 74 ? 48 8B 8E A8 01 00 00 48 8B 01 48 8B 80 40 04 00 00");
+
+        DEFINE_SIG(clientInstance_getLocalPlayer, "ClientInstance::getLocalPlayer",
+            "48 83 EC 48 48 8B 05 ? ? ? ? 48 31 E0 48 89 44 24 40 48 8D 91 ? ? ? ? "
+            "48 8D 4C 24 20 E8 ? ? ? ? 80 7C 24 38 01");
+
+        DEFINE_SIG(clientInstance_getScreenName, "ClientInstance::getScreenName",
+            "55 56 57 48 83 EC ? 48 8D 6C 24 ? 48 C7 45 ? FE FF FF FF 48 89 D6 48 8B 01 "
+            "48 8B 80 80 07 00 00 48 8D 55 ? FF 15 ? ? ? ? 48 83 7D ? 00 75 ? 48 8D 05 ? ? ? ? "
+            "48 89 44 24 ? 48 8D 0D ? ? ? ? 48 8D 15 ? ? ? ? 4C 8D 0D ? ? ? ? 41 B8 2C 01 00 00 "
+            "E8 ? ? ? ? 84 C0 74 ? C7 04 25 00 00 00 00 DE C0 AD DE 48 8B 45 ? 80 38 00 75 ? "
+            "48 8D 05 ? ? ? ? 48 89 44 24 ? 48 8D 0D ? ? ? ? 48 8D 15 ? ? ? ? 4C 8D 0D ? ? ? ? "
+            "41 B8 30 01 00 00 E8 ? ? ? ? 84 C0 74 ? C7 04 25 00 00 00 00 DE C0 AD DE 48 8B 4D ? "
+            "48 8B 01 48 8B 80 60 01 00 00");
+
+        DEFINE_SIG(actor_normalTick, "Actor::normalTick",
+            "55 41 57 41 56 41 55 41 54 56 57 53 48 81 EC ? ? ? ? 48 8D AC 24 ? ? ? ? "
+            "0F 29 BD ? ? ? ? 0F 29 B5 ? ? ? ? 48 C7 85 ? ? ? ? FE FF FF FF 48 89 CE "
+            "80 B9 ? ? ? ? 01 75 ? 83 BE ? ? ? ? 00");
+
+        DEFINE_SIG(actor_setRotation, "Actor::setRotation",
+            "41 57 41 56 41 55 41 54 56 57 55 53 48 81 EC D8 00 00 00 44 0F 29 94 24 C0 00 00 00 "
+            "44 0F 29 8C 24 B0 00 00 00 44 0F 29 84 24 A0 00 00 00 0F 29 BC 24 90 00 00 00 "
+            "0F 29 B4 24 80 00 00 00 4C 89 C6 49 8B 40 10 41 8B 78 18");
+
+        DEFINE_SIG(options_getPerspective, "Options::getPerspective",
+            "48 83 EC ? 48 8B 05 ? ? ? ? 48 31 E0 48 89 44 24 ? 48 8B 01 "
+            "48 8B 40 ? 48 8D 54 24 ? 41 B8 03 00 00 00");
+
+        DEFINE_SIG(render_levelRender, "LevelRenderer::renderLevel",
+            "E8 ? ? ? ? 45 31 E4 48 83 BE");
+
+        DEFINE_SIG(render_tessVertex, "Tessellator::vertex",
+            "55 41 57 41 56 41 55 41 54 56 57 53 48 81 EC ? ? ? ? 48 8D AC 24 ? ? ? ? "
+            "44 0F 29 ? ? 44 0F 29 ? ? 0F 29 ? ? 0F 29 ? ? 48 C7 ? ? FE FF FF FF "
+            "0F 28 F3 0F 28 FA 44 0F 28 C1 48 89 CE 48 8B 0D ? ? ? ? 48 8B 01");
+
+        DEFINE_SIG(render_tessBegin, "Tessellator::begin",
+            "56 57 55 53 48 83 EC ? 48 8B 05 ? ? ? ? 48 31 E0 48 89 44 24 ? "
+            "80 B9 ? ? ? ? ? 0F 85 ? ? ? ? 80 B9");
+
+        DEFINE_SIG(render_tessColor, "Tessellator::color",
+            "80 B9 ? ? ? ? ? 0F 85 ? ? ? ? F3 0F 10 05 ? ? ? ? F3 0F 10 0A");
+
+        DEFINE_SIG(render_meshImmediate, "MeshHelpers::renderMeshImmediately",
+            "55 41 57 41 56 41 54 56 57 53 48 81 EC ? ? ? ? 48 8D AC 24 ? ? ? ? "
+            "48 C7 85 ? ? ? ? ? ? ? ? 80 BA ? ? ? ? ? 0F 85 ? ? ? ? 4C 89 CF");
+
+        DEFINE_SIG(render_uiFillColor, "MaterialPtr::getUIColor",
+            "C6 45 D0 00 4C 8D 05 ? ? ? ? 4C 8D 4D B0 48 89 F1 48 89 FA E8");
     };
 
-}
+} // namespace minecraft

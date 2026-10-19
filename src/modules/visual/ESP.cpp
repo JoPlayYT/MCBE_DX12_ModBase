@@ -15,7 +15,7 @@ ESP::ESP() : Module("Visual", "ESP", "Renders 3D bounding boxes around entities.
 void ESP::on_enable() {
     m_renderListener = EventBus::instance().subscribe<LevelRenderEvent>([this](LevelRenderEvent& event) {
         render(event);
-    });
+        });
 }
 
 void ESP::on_disable() {

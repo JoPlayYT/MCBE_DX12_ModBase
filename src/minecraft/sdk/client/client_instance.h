@@ -6,6 +6,7 @@
 
 #include <atomic>
 #include <cstdint>
+#include <string>
 
 class LocalPlayer;
 
@@ -133,6 +134,13 @@ public:
     }
 
     [[nodiscard]] bool world_to_screen(const math::Vec3& worldPos, math::Vec2& screenPos) const;
+
+    void releaseMouse();
+    void grabMouse();
+
+    [[nodiscard]] static std::string getScreenName();
+    [[nodiscard]] static bool isGameUiOpen();
+    [[nodiscard]] static bool isClientUiOpen();
 
 private:
     static inline std::atomic<ClientInstance*> s_instance{ nullptr };

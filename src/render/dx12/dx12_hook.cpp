@@ -1,7 +1,7 @@
 #include "render/dx12/dx12_hook.h"
 
 #include "modules/module_manager.h"
-#include "ui/menu.h"
+#include "ui/clickgui.h"
 #include "ui/ui_settings.h"
 #include "utils/logger.h"
 
@@ -94,6 +94,45 @@ namespace {
         }
     }
 
+    void release_gameplay_input(HWND hwnd) {
+        if (!g_originalWndProc || !hwnd) return;
+
+        InputManager::instance().clear_key_states();
+
+        auto release_key = [hwnd](WPARAM key) {
+            LPARAM keyUpLParam = 0xC0000001;
+            const UINT scanCode = MapVirtualKey(static_cast<UINT>(key), MAPVK_VK_TO_VSC);
+            keyUpLParam |= static_cast<LPARAM>(scanCode) << 16;
+            CallWindowProc(g_originalWndProc, hwnd, WM_KEYUP, key, keyUpLParam);
+        };
+
+        release_key('W');
+        release_key('A');
+        release_key('S');
+        release_key('D');
+        release_key(VK_SPACE);
+        release_key(VK_SHIFT);
+        release_key(VK_CONTROL);
+
+        CallWindowProc(g_originalWndProc, hwnd, WM_LBUTTONUP, 0, 0);
+        CallWindowProc(g_originalWndProc, hwnd, WM_RBUTTONUP, 0, 0);
+        CallWindowProc(g_originalWndProc, hwnd, WM_MBUTTONUP, 0, 0);
+    }
+
+    void force_non_client_mouse(HWND hwnd) {
+        if (!hwnd || !g_originalWndProc) return;
+
+        ReleaseCapture();
+        ClipCursor(nullptr);
+
+        POINT pt{};
+        GetCursorPos(&pt);
+        const LPARAM screenPos = MAKELPARAM(static_cast<short>(pt.x), static_cast<short>(pt.y));
+
+        CallWindowProc(g_originalWndProc, hwnd, WM_NCMOUSEMOVE, HTCAPTION, screenPos);
+        CallWindowProc(g_originalWndProc, hwnd, WM_MOUSELEAVE, 0, 0);
+    }
+
     LRESULT CALLBACK wnd_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
         const bool keyDown = (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN);
         const bool keyUp = (msg == WM_KEYUP || msg == WM_SYSKEYUP);
@@ -105,23 +144,54 @@ namespace {
         if (keyUp && wparam == VK_INSERT) {
             const bool opening = !g_menuOpen.load();
             g_menuOpen.store(opening);
+
+            if (opening) {
+                release_gameplay_input(hwnd);
+                force_non_client_mouse(hwnd);
+            }
             return 0;
+        }
+
+        if (keyDown && wparam == VK_ESCAPE && g_menuOpen.load()) {
+            if (InputManager::instance().is_binding()) {
+                InputManager::instance().cancel_binding();
+                return 0;
+            }
+            g_menuOpen.store(false);
+            return 0;
+        }
+
+        const bool isInputMessage = (
+            msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN ||
+            msg == WM_KEYUP || msg == WM_SYSKEYUP ||
+            msg == WM_CHAR ||
+            msg == WM_LBUTTONDOWN || msg == WM_LBUTTONUP || msg == WM_LBUTTONDBLCLK ||
+            msg == WM_RBUTTONDOWN || msg == WM_RBUTTONUP || msg == WM_RBUTTONDBLCLK ||
+            msg == WM_MBUTTONDOWN || msg == WM_MBUTTONUP || msg == WM_MBUTTONDBLCLK ||
+            msg == WM_XBUTTONDOWN || msg == WM_XBUTTONUP || msg == WM_XBUTTONDBLCLK ||
+            msg == WM_MOUSEWHEEL || msg == WM_MOUSEMOVE
+        );
+
+        if (g_menuOpen.load()) {
+            ReleaseCapture();
+            ClipCursor(nullptr);
+
+            if (InputManager::instance().is_binding()) {
+                InputManager::instance().handle_win32_message(msg, wparam, lparam);
+            }
+
+            if (ImGui::GetCurrentContext()) {
+                ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam);
+            }
+
+            if (isInputMessage) {
+                return 0;
+            }
         }
 
         const bool consumedByInput = InputManager::instance().handle_win32_message(msg, wparam, lparam);
         if (consumedByInput) {
             return 0;
-        }
-
-        if (g_menuOpen.load() && ImGui::GetCurrentContext()) {
-            ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam);
-
-            ImGuiIO& io = ImGui::GetIO();
-            const bool isMouseMsg = (msg >= WM_MOUSEFIRST && msg <= WM_MOUSELAST);
-
-            if ((isMouseMsg && io.WantCaptureMouse) || (!isMouseMsg && io.WantCaptureKeyboard)) {
-                return TRUE;
-            }
         }
 
         return CallWindowProc(g_originalWndProc, hwnd, msg, wparam, lparam);
@@ -390,7 +460,7 @@ namespace {
         ModuleManager::instance().on_imgui_render();
 
         if (g_menuOpen.load()) {
-            menu::render();
+            clickgui::render();
         }
 
         ImGui::Render();

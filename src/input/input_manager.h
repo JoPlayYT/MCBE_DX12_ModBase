@@ -12,6 +12,7 @@ public:
     bool handle_win32_message(UINT msg, WPARAM wparam, LPARAM lparam);
 
     bool is_key_down(int vkCode) const;
+    void clear_key_states();
 
     void begin_binding(Module* module);
     void cancel_binding();

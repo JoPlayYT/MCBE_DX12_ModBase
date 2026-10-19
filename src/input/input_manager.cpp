@@ -13,6 +13,10 @@ bool InputManager::is_key_down(int vkCode) const {
     return m_keyStates[vkCode];
 }
 
+void InputManager::clear_key_states() {
+    m_keyStates.fill(false);
+}
+
 void InputManager::begin_binding(Module* module) {
     m_bindingModule = module;
 }

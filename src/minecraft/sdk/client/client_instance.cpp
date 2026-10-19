@@ -1,4 +1,7 @@
 #include "minecraft/sdk/client/client_instance.h"
+#include "minecraft/hooks/grab_mouse_hook.h"
+#include "minecraft/hooks/screen_hook.h"
+#include "render/dx12/dx12_hook.h"
 
 #include <cmath>
 
@@ -45,3 +48,26 @@ bool ClientInstance::world_to_screen(const math::Vec3& worldPos, math::Vec2& scr
         return false;
     }
 }
+
+void ClientInstance::releaseMouse() {
+    minecraft::hooks::release_mouse(this);
+}
+
+void ClientInstance::grabMouse() {
+    minecraft::hooks::grab_mouse(this);
+}
+
+std::string ClientInstance::getScreenName() {
+    return minecraft::hooks::get_current_screen_name();
+}
+
+bool ClientInstance::isGameUiOpen() {
+    return minecraft::hooks::is_game_ui_open();
+}
+
+bool ClientInstance::isClientUiOpen() {
+    return dx12_hook::is_menu_open();
+}
+
+
+

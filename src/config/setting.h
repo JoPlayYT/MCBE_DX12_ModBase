@@ -15,6 +15,15 @@
 
 namespace config {
 
+    enum class SettingType {
+        BOOL,
+        FLOAT,
+        INT,
+        ENUM,
+        COLOR,
+        STRING
+    };
+
     class Setting {
     public:
         Setting(std::string name, std::string description, std::function<bool()> visibility = nullptr)
@@ -25,6 +34,7 @@ namespace config {
         const std::string& name() const { return m_name; }
         const std::string& description() const { return m_description; }
         bool is_visible() const { return m_visibility ? m_visibility() : true; }
+        virtual SettingType type() const = 0;
 
         virtual void render_ui() = 0;
         virtual nlohmann::json serialize() const = 0;
@@ -41,6 +51,8 @@ namespace config {
         BoolSetting(std::string name, std::string description, bool defaultValue, std::function<bool()> visibility = nullptr)
             : Setting(std::move(name), std::move(description), std::move(visibility)), m_value(defaultValue) {
         }
+
+        SettingType type() const override { return SettingType::BOOL; }
 
         bool value() const { return m_value.load(std::memory_order_acquire); }
         void set_value(bool val) { m_value.store(val, std::memory_order_release); }
@@ -72,9 +84,15 @@ namespace config {
             m_value(defaultValue), m_min(min), m_max(max), m_format(format) {
         }
 
+        SettingType type() const override { return SettingType::FLOAT; }
+
         float value() const { return m_value.load(std::memory_order_acquire); }
         void set_value(float val) { m_value.store(std::clamp(val, m_min, m_max), std::memory_order_release); }
         operator float() const { return value(); }
+
+        float min() const { return m_min; }
+        float max() const { return m_max; }
+        const char* format() const { return m_format; }
 
         void render_ui() override {
             float val = m_value.load(std::memory_order_relaxed);
@@ -105,9 +123,14 @@ namespace config {
             m_value(defaultValue), m_min(min), m_max(max) {
         }
 
+        SettingType type() const override { return SettingType::INT; }
+
         int value() const { return m_value.load(std::memory_order_acquire); }
         void set_value(int val) { m_value.store(std::clamp(val, m_min, m_max), std::memory_order_release); }
         operator int() const { return value(); }
+
+        int min() const { return m_min; }
+        int max() const { return m_max; }
 
         void render_ui() override {
             int val = m_value.load(std::memory_order_relaxed);
@@ -137,6 +160,8 @@ namespace config {
             m_value(defaultValue), m_options(std::move(options)) {
         }
 
+        SettingType type() const override { return SettingType::ENUM; }
+
         int value() const { return m_value.load(std::memory_order_acquire); }
         void set_value(int val) {
             if (val >= 0 && val < static_cast<int>(m_options.size())) {
@@ -144,6 +169,8 @@ namespace config {
             }
         }
         operator int() const { return value(); }
+
+        const std::vector<std::string>& options() const { return m_options; }
 
         std::string current_option() const {
             int val = value();
@@ -180,6 +207,8 @@ namespace config {
         ColorSetting(std::string name, std::string description, float r = 1.0f, float g = 1.0f, float b = 1.0f, float a = 1.0f, std::function<bool()> visibility = nullptr)
             : Setting(std::move(name), std::move(description), std::move(visibility)), m_color{ r, g, b, a } {
         }
+
+        SettingType type() const override { return SettingType::COLOR; }
 
         void get_color(float outColor[4]) const {
             std::shared_lock lock(m_mutex);
@@ -238,6 +267,8 @@ namespace config {
         StringSetting(std::string name, std::string description, std::string defaultValue, std::function<bool()> visibility = nullptr)
             : Setting(std::move(name), std::move(description), std::move(visibility)), m_value(std::move(defaultValue)) {
         }
+
+        SettingType type() const override { return SettingType::STRING; }
 
         std::string value() const {
             std::shared_lock lock(m_mutex);

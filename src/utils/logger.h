@@ -8,6 +8,7 @@
 #include <fstream>
 #include <filesystem>
 #include <Windows.h>
+#include "utils/color.h"
 
 enum class LogLevel {
     Trace,

@@ -1,4 +1,5 @@
 #include "minecraft/hooks/client_instance_hook.h"
+#include "minecraft/hooks/screen_hook.h"
 #include "minecraft/sdk/client/client_instance.h"
 #include "events/event_bus.h"
 #include "events/client_instance_update_event.h"
@@ -7,17 +8,17 @@
 #include <MinHook.h>
 
 namespace {
-    using ClientUpdateFn = bool(__fastcall*)(void* self, bool isInitFinished);
+    using ClientUpdateFn = bool(__fastcall*)(ClientInstance* self, bool isInitFinished);
     ClientUpdateFn g_originalClientUpdate = nullptr;
     void* g_clientUpdateTarget = nullptr;
 
-    bool __fastcall hook_client_instance_update(void* self, bool isInitFinished) {
-        auto* instance = static_cast<ClientInstance*>(self);
-        if (instance) {
-            ClientInstance::set(instance);
+    bool __fastcall hook_client_instance_update(ClientInstance* self, bool isInitFinished) {
+        if (self) {
+            ClientInstance::set(self);
+            minecraft::hooks::update_screen_name(self);
         }
 
-        ClientInstanceUpdateEvent event(instance, isInitFinished);
+        ClientInstanceUpdateEvent event(self, isInitFinished);
         EventBus::instance().publish(event);
 
         return g_originalClientUpdate ? g_originalClientUpdate(self, isInitFinished) : false;
@@ -34,7 +35,7 @@ namespace minecraft::hooks {
         LOG_INFO("Hooking ClientInstance::update at address: {:#x}", updateAddr);
 
         g_clientUpdateTarget = reinterpret_cast<void*>(updateAddr);
-        if (MH_CreateHook(g_clientUpdateTarget, &hook_client_instance_update, reinterpret_cast<void**>(&g_originalClientUpdate)) != MH_OK) {
+        if (MH_CreateHook(g_clientUpdateTarget, reinterpret_cast<LPVOID>(&hook_client_instance_update), reinterpret_cast<void**>(&g_originalClientUpdate)) != MH_OK) {
             LOG_ERROR("Failed to create ClientInstance::update hook!");
             g_clientUpdateTarget = nullptr;
             return false;
@@ -52,12 +53,13 @@ namespace minecraft::hooks {
     void remove_client_instance_hook() {
         ClientInstance::set(nullptr);
         ClientInstance::setLocalPlayer(nullptr);
+
         if (g_clientUpdateTarget) {
             MH_DisableHook(g_clientUpdateTarget);
             MH_RemoveHook(g_clientUpdateTarget);
             g_clientUpdateTarget = nullptr;
             g_originalClientUpdate = nullptr;
-            LOG_INFO("ClientInstance update hook removed.");
+            LOG_INFO("ClientInstance hook removed.");
         }
     }
 }

@@ -26,10 +26,10 @@ namespace minecraft::hook_memory {
     inline std::uintptr_t resolve_signature(const char* name, std::string_view signatureStr) {
         const std::uintptr_t addr = find_signature(signatureStr);
         if (addr) {
-            LOG_INFO("[Signature] {:<32} -> OK ({:#x})", name, addr);
+            LOG_INFO("[Signature] {:<32} -> {} ({:#x})", name, color(TextColor::Green, "OK"), addr);
         }
         else {
-            LOG_ERROR("[Signature] {:<32} -> FAILED!", name);
+            LOG_ERROR("[Signature] {:<32} -> {}!", name, color(TextColor::Red, "FAILED"));
         }
         return addr;
     }

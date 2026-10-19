@@ -25,8 +25,14 @@ namespace minecraft {
     struct BedrockSignatures {
         static constexpr const char* clientInstance_Update = //26.52
             "55 41 57 41 56 41 55 41 54 56 57 53 48 81 EC ? ? ? ? 48 8D AC 24 ? ? ? ? 48 C7 85 ? ? ? ? FE FF FF FF 89 D3 48 89 CE 48 8B 01 48 8B 80 ? ? ? ? 48 8D 95 ? ? ? ? FF 15 ? ? ? ?";
+        static constexpr const char* clientInstance_grabMouse = //26.52
+            "56 48 83 EC 20 48 89 CE 48 8B 01 48 8B 80 10 05 00 00 FF 15 ? ? ? ? 84 C0 74 ? 48 8B 8E A8 01 00 00 48 8B 01 48 8B 80 38 04 00 00";
+        static constexpr const char* clientInstance_releaseMouse = //26.52
+            "56 48 83 EC 20 48 89 CE 48 8B 01 48 8B 80 10 05 00 00 FF 15 ? ? ? ? 84 C0 74 ? 48 8B 8E A8 01 00 00 48 8B 01 48 8B 80 40 04 00 00";
         static constexpr const char* clientInstance_getLocalPlayer = //26.52
             "48 83 EC 48 48 8B 05 ? ? ? ? 48 31 E0 48 89 44 24 40 48 8D 91 ? ? ? ? 48 8D 4C 24 20 E8 ? ? ? ? 80 7C 24 38 01";
+        static constexpr const char* clientInstance_getScreenName = //26.52
+            "55 56 57 48 83 EC ? 48 8D 6C 24 ? 48 C7 45 ? FE FF FF FF 48 89 D6 48 8B 01 48 8B 80 80 07 00 00 48 8D 55 ? FF 15 ? ? ? ? 48 83 7D ? 00 75 ? 48 8D 05 ? ? ? ? 48 89 44 24 ? 48 8D 0D ? ? ? ? 48 8D 15 ? ? ? ? 4C 8D 0D ? ? ? ? 41 B8 2C 01 00 00 E8 ? ? ? ? 84 C0 74 ? C7 04 25 00 00 00 00 DE C0 AD DE 48 8B 45 ? 80 38 00 75 ? 48 8D 05 ? ? ? ? 48 89 44 24 ? 48 8D 0D ? ? ? ? 48 8D 15 ? ? ? ? 4C 8D 0D ? ? ? ? 41 B8 30 01 00 00 E8 ? ? ? ? 84 C0 74 ? C7 04 25 00 00 00 00 DE C0 AD DE 48 8B 4D ? 48 8B 01 48 8B 80 60 01 00 00";
         static constexpr const char* actor_normalTick = //26.52
             "55 41 57 41 56 41 55 41 54 56 57 53 48 81 EC ? ? ? ? 48 8D AC 24 ? ? ? ? 0F 29 BD ? ? ? ? 0F 29 B5 ? ? ? ? 48 C7 85 ? ? ? ? FE FF FF FF 48 89 CE 80 B9 ? ? ? ? 01 75 ? 83 BE ? ? ? ? 00";
         static constexpr const char* actor_setRotation = //26.52

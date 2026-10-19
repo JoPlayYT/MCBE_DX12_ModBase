@@ -67,16 +67,6 @@ namespace {
         }
         return result;
     }
-
-    std::string colorize_status_keywords(std::string text) {
-        if (size_t pos = text.find("-> OK"); pos != std::string::npos) {
-            text.replace(pos, 5, "-> \033[92mOK\033[0m"); // Green OK
-        }
-        else if (size_t pos = text.find("-> FAILED"); pos != std::string::npos) {
-            text.replace(pos, 9, "-> \033[91mFAILED\033[0m"); // Red FAILED
-        }
-        return text;
-    }
 }
 
 Logger& Logger::instance() {
@@ -99,15 +89,14 @@ void Logger::initialize(const std::string& clientName, bool enableConsole, bool 
     std::lock_guard<std::mutex> lock(m_mutex);
     if (m_initialized) return;
 
-#if defined(_DEBUG) || !defined(NDEBUG)
     bool showConsole = enableConsole;
-#else
-    bool showConsole = false;
-#endif
 
     if (showConsole) {
         if (AllocConsole() || AttachConsole(ATTACH_PARENT_PROCESS)) {
             m_consoleAllocated = true;
+
+            SetConsoleOutputCP(CP_UTF8);
+            SetConsoleCP(CP_UTF8);
 
             FILE* dummy = nullptr;
             freopen_s(&dummy, "CONOUT$", "w", stdout);
@@ -200,7 +189,7 @@ void Logger::write_log(LogLevel level, const std::source_location& loc, const st
     }
 
     std::string clean_message = strip_mc_colors(message);
-    std::string color_message = colorize_status_keywords(mc_to_ansi(message));
+    std::string color_message = mc_to_ansi(message);
 
     std::string plain_line = std::format("[{}] [{}] [{}:{}] {}\n",
         time_str, level_str, filename, loc.line(), clean_message);

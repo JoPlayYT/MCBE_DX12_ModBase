@@ -8,16 +8,18 @@
 #include <MinHook.h>
 
 namespace {
-    using ActorSetRotFn = float*(__fastcall*)(__int64 a1, __int64 a2, void* actor);
+    using ActorSetRotFn = float*(__fastcall*)(void* rotationAngles, void* rotationContext, Actor* actor);
     ActorSetRotFn g_originalActorSetRot = nullptr;
     void* g_actorSetRotTarget = nullptr;
 
-    float* __fastcall hook_actor_set_rot(__int64 a1, __int64 a2, void* actor) {
-        float* result = g_originalActorSetRot ? g_originalActorSetRot(a1, a2, actor) : nullptr;
+    float* __fastcall hook_actor_set_rot(void* rotationAngles, void* rotationContext, Actor* actor) {
+        float* result = g_originalActorSetRot 
+            ? g_originalActorSetRot(rotationAngles, rotationContext, actor) 
+            : nullptr;
 
         LocalPlayer* localPlayer = ClientInstance::getLocalPlayer();
-        if (actor != nullptr && localPlayer != nullptr && actor == static_cast<void*>(localPlayer)) {
-            ActorSetRotEvent event(static_cast<Actor*>(actor), localPlayer);
+        if (actor != nullptr && localPlayer != nullptr && actor == reinterpret_cast<Actor*>(localPlayer)) {
+            ActorSetRotEvent event(actor, localPlayer);
             EventBus::instance().publish(event);
         }
 

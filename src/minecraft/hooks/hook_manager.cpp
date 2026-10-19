@@ -1,5 +1,7 @@
 #include "minecraft/hooks/hook_manager.h"
 #include "minecraft/hooks/client_instance_hook.h"
+#include "minecraft/hooks/grab_mouse_hook.h"
+#include "minecraft/hooks/screen_hook.h"
 #include "minecraft/hooks/actor_tick_hook.h"
 #include "minecraft/hooks/actor_set_rot_hook.h"
 #include "minecraft/hooks/perspective_hook.h"
@@ -47,6 +49,18 @@ namespace minecraft::hooks {
             "ClientInstance::update",
             BedrockSignatures::clientInstance_Update);
 
+        const std::uintptr_t grabMouseAddr = hook_memory::resolve_signature(
+            "ClientInstance::grabMouse",
+            BedrockSignatures::clientInstance_grabMouse);
+
+        const std::uintptr_t releaseMouseAddr = hook_memory::resolve_signature(
+            "ClientInstance::releaseMouse",
+            BedrockSignatures::clientInstance_releaseMouse);
+
+        const std::uintptr_t screenNameAddr = hook_memory::resolve_signature(
+            "ClientInstance::getScreenName",
+            BedrockSignatures::clientInstance_getScreenName);
+
         s_getLocalPlayerAddr = hook_memory::resolve_signature(
             "ClientInstance::getLocalPlayer",
             BedrockSignatures::clientInstance_getLocalPlayer);
@@ -81,6 +95,18 @@ namespace minecraft::hooks {
             return false;
         }
 
+        if (grabMouseAddr) {
+            if (!install_grab_mouse_hook(grabMouseAddr, releaseMouseAddr)) {
+                LOG_ERROR("Failed to install ClientInstance::grabMouse hook!");
+            }
+        }
+
+        if (screenNameAddr) {
+            if (!install_screen_hook(screenNameAddr)) {
+                LOG_ERROR("Failed to install ClientInstance::getScreenName hook!");
+            }
+        }
+
         if (actorSetRotAddr) {
             if (!install_actor_set_rot_hook(actorSetRotAddr)) {
                 LOG_ERROR("Failed to install Actor::setRotation hook!");
@@ -105,6 +131,8 @@ namespace minecraft::hooks {
     void shutdown() {
         LOG_INFO("Shutting down game hooks...");
         ClientInstance::setLocalPlayer(nullptr);
+        remove_screen_hook();
+        remove_grab_mouse_hook();
         remove_level_render_hook();
         remove_perspective_hook();
         remove_actor_set_rot_hook();

@@ -2,6 +2,7 @@
 #include "input/input_manager.h"
 #include "events/key_event.h"
 #include "events/event_bus.h"
+#include "minecraft/sdk/client/client_instance.h"
 #include "utils/logger.h"
 
 ModuleManager& ModuleManager::instance() {
@@ -29,6 +30,7 @@ void ModuleManager::initialize() {
 
     EventBus::instance().subscribe<KeyEvent>([this](KeyEvent& event) {
         if (InputManager::instance().is_binding()) return;
+        if (ClientInstance::isClientUiOpen() || ClientInstance::isGameUiOpen()) return;
 
         std::shared_lock lock(m_mutex);
         for (const auto& module : m_modules) {

@@ -22,6 +22,7 @@ void ModuleManager::initialize() {
     m_modules.push_back(std::make_unique<ArrayList>());
     m_modules.push_back(std::make_unique<ESP>());
     m_modules.push_back(std::make_unique<Trail>());
+    m_modules.push_back(std::make_unique<Freelook>());
     m_modules.push_back(std::make_unique<Killaura>());
 
     rebuild_categories();

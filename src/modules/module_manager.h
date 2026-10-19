@@ -15,6 +15,7 @@
 #include "modules/visual/Arraylist.h"
 #include "modules/visual/ESP.h"
 #include "modules/visual/Trail.h"
+#include "modules/visual/Freelook.h"
 #include "modules/combat/Killaura.h"
 
 

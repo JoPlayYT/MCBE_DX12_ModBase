@@ -1,6 +1,8 @@
 #include "minecraft/hooks/hook_manager.h"
 #include "minecraft/hooks/client_instance_hook.h"
 #include "minecraft/hooks/actor_tick_hook.h"
+#include "minecraft/hooks/actor_set_rot_hook.h"
+#include "minecraft/hooks/perspective_hook.h"
 #include "minecraft/hooks/attack_hook.h"
 #include "minecraft/hooks/level_render_hook.h"
 #include "minecraft/hooks/hook_memory.h"
@@ -53,6 +55,14 @@ namespace minecraft::hooks {
             "Actor::normalTick",
             BedrockSignatures::actor_normalTick);
 
+        const std::uintptr_t actorSetRotAddr = hook_memory::resolve_signature(
+            "Actor::setRotation",
+            BedrockSignatures::actor_setRotation);
+
+        const std::uintptr_t perspectiveAddr = hook_memory::resolve_signature(
+            "Options::getPerspective",
+            BedrockSignatures::options_getPerspective);
+
         const std::uintptr_t levelRenderCallAddr = hook_memory::resolve_signature(
             "LevelRenderer::renderLevel",
             BedrockSignatures::render_levelRender);
@@ -71,6 +81,18 @@ namespace minecraft::hooks {
             return false;
         }
 
+        if (actorSetRotAddr) {
+            if (!install_actor_set_rot_hook(actorSetRotAddr)) {
+                LOG_ERROR("Failed to install Actor::setRotation hook!");
+            }
+        }
+
+        if (perspectiveAddr) {
+            if (!install_perspective_hook(perspectiveAddr)) {
+                LOG_ERROR("Failed to install Options::getPerspective hook!");
+            }
+        }
+
         if (!install_level_render_hook(levelRenderCallAddr)) {
             LOG_ERROR("Failed to install LevelRenderer::renderLevel hook!");
             return false;
@@ -84,6 +106,8 @@ namespace minecraft::hooks {
         LOG_INFO("Shutting down game hooks...");
         ClientInstance::setLocalPlayer(nullptr);
         remove_level_render_hook();
+        remove_perspective_hook();
+        remove_actor_set_rot_hook();
         remove_attack_hook();
         remove_actor_tick_hook();
         remove_client_instance_hook();

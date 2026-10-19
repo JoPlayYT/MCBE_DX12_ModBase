@@ -112,6 +112,7 @@ public:
     void setRotation(const math::ViewAngles& angles) {
         if (auto* rot = getComponent<ActorRotationComponent>()) {
             rot->mRotation = angles;
+            rot->mOldRotation = angles;
         }
     }
 
@@ -124,7 +125,7 @@ public:
 
     void setHeadYaw(float headYaw) {
         if (auto* headRot = getComponent<ActorHeadRotationComponent>()) {
-            headRot->mHeadYaw.x = headYaw;
+            headRot->mHeadYaw = { headYaw, headYaw };
         }
     }
 
